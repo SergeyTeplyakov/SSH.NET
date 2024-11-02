@@ -462,7 +462,7 @@ namespace Renci.SshNet
             _keepAliveTimer = null;
         }
 
-        private void SendKeepAliveMessage()
+        private void SendKeepAliveMessage(bool propagateException = true)
         {
             var session = Session;
 
@@ -478,6 +478,14 @@ namespace Renci.SshNet
                 try
                 {
                     _ = session.TrySendMessage(new IgnoreMessage());
+                }
+                catch(Exception e)
+                {
+                    Trace.TraceWarning("Failed sending keep alive message: " + e);
+                    if (propagateException)
+                    {
+                        throw;
+                    }
                 }
                 finally
                 {
@@ -519,7 +527,8 @@ namespace Renci.SshNet
         /// </returns>
         private Timer CreateKeepAliveTimer(TimeSpan dueTime, TimeSpan period)
         {
-            return new Timer(state => SendKeepAliveMessage(), Session, dueTime, period);
+            // Timer callbacks should swallow exceptions to avoid process crashes.
+            return new Timer(state => SendKeepAliveMessage(propagateException: false), Session, dueTime, period);
         }
 
         private ISession CreateAndConnectSession()
